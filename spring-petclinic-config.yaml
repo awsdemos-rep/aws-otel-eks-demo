@@ -1,0 +1,72 @@
+# create namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aws-otel-eks
+---
+# create deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aws-otel-eks-dep
+  namespace: aws-otel-eks
+spec:
+  replicas: 1
+  selector:
+    matchLabels:    
+      name: aws-otel-eks-pod
+  template:
+    metadata:
+      labels:
+        name: aws-otel-eks-pod
+    spec:
+      containers:
+        - name: aws-otel-java-appli
+          image: awsdemos/aws-otel-eks-demo
+          ports:          
+          - containerPort: 8080
+            name: java-appli-port                      
+        - name: aws-otel-mysql
+          image: mysql:5.7.8
+          ports:
+          - containerPort: 3306
+            name: mysql-port      
+          env:
+          - name: MYSQL_USER
+            value: "petclinic"
+          - name: MYSQL_PASSWORD
+            value: "petclinic"      
+          - name: MYSQL_ROOT_PASSWORD
+            value: "root"
+          - name: MYSQL_DATABASE
+            value: "petclinic"      
+        - name: aws-otel-collector
+          image: amazon/aws-otel-collector:latest
+          ports:
+          - containerPort: 4317
+            name: collector-port
+          env:
+            - name: AWS_REGION
+              value: "eu-central-1"              
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu:  256m
+              memory: 512Mi
+            requests:
+              cpu: 32m
+              memory: 24Mi
+---
+# create service
+apiVersion: v1
+kind: Service
+metadata:
+  name: aws-otel-eks-service
+  namespace: aws-otel-eks
+spec:
+  type: LoadBalancer
+  selector:
+      name: aws-otel-eks-pod  
+  ports:
+    - targetPort : 8080
+      port : 80
